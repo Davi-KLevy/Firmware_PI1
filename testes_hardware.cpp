@@ -174,32 +174,45 @@ void testeBateria() {
 
   // Configuração dos pinos necessários
   pinMode(GREEN, OUTPUT);       // LED verde para indicar bateria alta
+  pinMode(BUZZER, OUTPUT);      // Buzzer para alertas
   pinMode(VOLTAGE_PIN, INPUT);  // Pino analógico para medir tensão da bateria
 
-  // Lê o valor bruto da tensão da bateria (pino analógico)
-  int leituraTensao = analogRead(VOLTAGE_PIN);
+  // Constantes do divisor resistivo
+  const double R1 = 10000.0;  // 10 kΩ
+  const double R2 = 3300.0;   // 3,3 kΩ
+  const double K = R2 / (R1 + R2); // Constante do divisor
 
-  // Converte a leitura para a tensão real
-  float tensaoBateria = (leituraTensao / (float)ADC_RESOLUTION) * VREF;
+
+  // Limites de tensão da bateria
+  const double VIN_MAX = 8.4; // Tensão máxima da bateria (V)
+  const double VIN_MIN = 6.4; // Tensão mínima da bateria (V)
+
+  // Leitura do ADC
+  int leituraTensao = analogRead(VOLTAGE_PIN);
+  double vout = (leituraTensao / (double)ADC_RESOLUTION) * VREF; // Conversão do ADC para tensão
+  double vin = vout / K; // Calcula a tensão real da bateria
 
   // Printando a tensão da bateria
-  Serial.print("Tensão medida: ");
-  Serial.print(tensaoBateria);
+  Serial.print("Tensão medida (Vin): ");
+  Serial.print(vin);
   Serial.println(" V");
 
-  // Define os limites para indicar o estado da bateria
-  if (tensaoBateria > 3.5) {
+  // Avaliação da tensão da bateria
+  if (vin > VIN_MAX) {
+    Serial.println("Alerta! Tensão acima do esperado!");
+  } else if (vin >= 7.5) {
     Serial.println("Bateria alta");
     digitalWrite(GREEN, HIGH);
     delay(1000);
     digitalWrite(GREEN, LOW);
-  } else if (tensaoBateria > 3.2) {
+  } else if (vin >= VIN_MIN) {
     Serial.println("Bateria média");
   } else {
-    Serial.println("Bateria baixa");
+    Serial.println("Alerta! Bateria fraca.");
     tocarMusicaBateriaFraca(); // Toca a melodia de bateria baixa
   }
 }
+
 
 void setup() {
   Serial.begin(115200);
