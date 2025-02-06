@@ -114,7 +114,7 @@ void setup() {
   analogWrite(BUZZER, 128); // Ativa o buzzer com 50% do ciclo de trabalho
   delay(300);
   analogWrite(BUZZER, 0);//desativa o buzzer
-  
+
 //Fim do setup do primeiro núcleo
 }
 //-----------------------LOOP DO PRIMEIRO NÚCLEO-----------------------------------
@@ -156,7 +156,7 @@ void loop1(){
 
   if(botaoPressionado) dataLogger();
 
-  
+
 }
 
 //-----------------------DESENVOLVIMENTO DAS FUNÇÕES-------------------------------
@@ -213,7 +213,7 @@ void procurarObjeto(){
     pararRobo();
   }
 
-  
+
 }
 
 //Cálculo da distância
@@ -240,7 +240,7 @@ void andarParaTras() {
   // Coloca os motores para girar no sentido que move o robô para trás
   digitalWrite(IN1, LOW); // Define o sentido dos motores
   digitalWrite(IN2, HIGH);
-  digitalWrite(IN3, LOW); 
+  digitalWrite(IN3, LOW);
   digitalWrite(IN4, HIGH);
   // Ajusta a velocidade dos motores (AJUSTAR O VALOR DEPOIS)
   analogWrite(MOTOR1, 200); // Motor 1
@@ -343,16 +343,16 @@ void ligaDesligaRobo(){
       for(uint8_t k = 0; k < 14; k++) digitalWrite(outputs[k], LOW); // Desativa todas as saídas
 
       Serial.println("Robô desligado.");
-      
+
 
     }
-    
+
    } else botaoPressionado = estadoAnteriorBotao;
     // Aguarda o botão ser solto antes de continuar
     while (digitalRead(BOT) == LOW);
   }
-   
-   
+
+
 }
 
 //Obtenção dos sensores da borda
