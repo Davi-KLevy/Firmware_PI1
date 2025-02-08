@@ -1,25 +1,23 @@
 /*
 FIRMWARE DE TESTES DO HARDWARE PROJETO ROBÔ SUMÔ - PI1
 
-AUTORES: PAULO CALEB FERNANDES DA SILVA, GABRIEL DA CUNHA BARBACELI
+AUTOR: PAULO CALEB FERNANDES DA SILVA
 
 MICROCONTROLADOR UTILIZADO: RP2040 (Mbed as Raspberry pi pico)
 */
 //-----------------------MAPEAMENTO DE HARDWARE------------------------------------
 const uint8_t LED_RBP_PICO= 22, //Pino do led interno da placa do raspberry pi pico (recomendado para debug)
               VOLTAGE_PIN = A0, //Pino analógico dedicado a medição de tensão
-              SENS_PIN    = A1, //Pino analógico dedicado a medição dos sensores LDR
               CURRENT_PIN = A2, //Pino analógico dedicado a medição de corrente
-              LIGHT_CTRL  = 1,  //Pino para controle da intensidade dos leds excitadores dos sensores LDRs
-              MUX_BIT1    = 2,  //Pino do bit 1 do multiplexador
-              MUX_BIT0    = 3,  //Pino do bit 0 do multiplexador
+              EDGE_SENS_1    = 1,  //Pino do sensor de borda 1
+              EDGE_SENS_2    = 2,  //Pino do sensor de borda 2
               ECHO        = 4,  //Pino do echo do sensor de distância
               TRIG        = 5,  //Pino de trigger do sensor de distância
               MOTOR1      = 6,  //PWM para o motor 1
               IN1         = 7,  //Sentido A do motor 1
               IN2         = 8,  //Sentido B do motor 1
-              IN3         = 10,  //Sentido A do motor 2
-              IN4         = 9, //Sentido B do motor 2
+              IN3         = 9,  //Sentido A do motor 2
+              IN4         = 10, //Sentido B do motor 2
               MOTOR2      = 11, //PWM para o motor 2
               GREEN       = 12, //Pino de acionamento do led verde (RGB)
               BLUE        = 13, //Pino de acionamento do led azul (RGB)
@@ -32,13 +30,106 @@ const uint8_t LED_RBP_PICO= 22, //Pino do led interno da placa do raspberry pi p
                 _CS = 17,   //Chip Select
                 _SCK = 18;  //Slave Clock
 //Vetores de inicialização
-const uint8_t inputs  [5] {SENS_PIN, CURRENT_PIN, VOLTAGE_PIN, BOT, ECHO}; //Vetor de entradas
-const uint8_t outputs [14] {MUX_BIT0, MUX_BIT1, TRIG, MOTOR1, IN1, IN2, IN3, IN4, MOTOR2, LIGHT_CTRL, RED, GREEN, BLUE, BUZZER}; //Vetor de saídas
+const uint8_t inputs  [6] { CURRENT_PIN, VOLTAGE_PIN, BOT, ECHO, EDGE_SENS_1, EDGE_SENS_2}; //Vetor de entradas
+const uint8_t outputs [11] {TRIG, MOTOR1, IN1, IN2, IN3, IN4, MOTOR2, RED, GREEN, BLUE, BUZZER}; //Vetor de saídas
 
-//--------------------FIM DO MAPEAMENTO DE HARDWARE--------------------------------
-const float VelocidadeSom_mpors = 340; // em metros por segundo
-const float VelocidadeSom_mporus = 0.000340; // em metros por microsegundo
+//--------------------VARIÁVEIS DO PROGRAMA--------------------------------
+#define NOTE_B0  31
+#define NOTE_C1  33
+#define NOTE_CS1 35
+#define NOTE_D1  37
+#define NOTE_DS1 39
+#define NOTE_E1  41
+#define NOTE_F1  44
+#define NOTE_FS1 46
+#define NOTE_G1  49
+#define NOTE_GS1 52
+#define NOTE_A1  55
+#define NOTE_AS1 58
+#define NOTE_B1  62
+#define NOTE_C2  65
+#define NOTE_CS2 69
+#define NOTE_D2  73
+#define NOTE_DS2 78
+#define NOTE_E2  82
+#define NOTE_F2  87
+#define NOTE_FS2 93
+#define NOTE_G2  98
+#define NOTE_GS2 104
+#define NOTE_A2  110
+#define NOTE_AS2 117
+#define NOTE_B2  123
+#define NOTE_C3  131
+#define NOTE_CS3 139
+#define NOTE_D3  147
+#define NOTE_DS3 156
+#define NOTE_E3  165
+#define NOTE_F3  175
+#define NOTE_FS3 185
+#define NOTE_G3  196
+#define NOTE_GS3 208
+#define NOTE_A3  220
+#define NOTE_AS3 233
+#define NOTE_B3  247
+#define NOTE_C4  262
+#define NOTE_CS4 277
+#define NOTE_D4  294
+#define NOTE_DS4 311
+#define NOTE_E4  330
+#define NOTE_F4  349
+#define NOTE_FS4 370
+#define NOTE_G4  392
+#define NOTE_GS4 415
+#define NOTE_A4  440
+#define NOTE_AS4 466
+#define NOTE_B4  494
+#define NOTE_C5  523
+#define NOTE_CS5 554
+#define NOTE_D5  587
+#define NOTE_DS5 622
+#define NOTE_E5  659
+#define NOTE_F5  698
+#define NOTE_FS5 740
+#define NOTE_G5  784
+#define NOTE_GS5 831
+#define NOTE_A5  880
+#define NOTE_AS5 932
+#define NOTE_B5  988
+#define NOTE_C6  1047
+#define NOTE_CS6 1109
+#define NOTE_D6  1175
+#define NOTE_DS6 1245
+#define NOTE_E6  1319
+#define NOTE_F6  1397
+#define NOTE_FS6 1480
+#define NOTE_G6  1568
+#define NOTE_GS6 1661
+#define NOTE_A6  1760
+#define NOTE_AS6 1865
+#define NOTE_B6  1976
+#define NOTE_C7  2093
+#define NOTE_CS7 2217
+#define NOTE_D7  2349
+#define NOTE_DS7 2489
+#define NOTE_E7  2637
+#define NOTE_F7  2794
+#define NOTE_FS7 2960
+#define NOTE_G7  3136
+#define NOTE_GS7 3322
+#define NOTE_A7  3520
+#define NOTE_AS7 3729
+#define NOTE_B7  3951
+#define NOTE_C8  4186
+#define NOTE_CS8 4435
+#define NOTE_D8  4699
+#define NOTE_DS8 4978
 
+
+const float VelocidadeSom_mpors = 340, // em metros por segundo
+            VelocidadeSom_mporus = 0.000340; // em metros por microsegundo
+unsigned long int updateAnalog = 0; //Atualização da função que realiza a leitura analógica dos pinos de tensão e corrente
+float instVoltage, //Global para armazenar a tensão instantânea
+      instCurrent; //Global para armazenar a corrente instantânea
 //----------------------INCLUSÃO DE BIBLIOTECAS -----------------------------------
 #include <SPI.h>//Biblioteca para comunicação SPI com o cartão SD
 #include <SD.h>//Biblioteca para o gerenciamento do cartão SD
@@ -46,39 +137,28 @@ File myFile;//Objeto myFile para o cartão SD
 String fileName;  // nome do arquivo para o cartão SD
 
 //-----------------------VARIÁVEIS DE PROGRAMA-------------------------------------
-
-// Define um limiar para os sensores de borda (usado para determinar quando o sensor detecta a borda)
-const float LIMIAR_SENSOR = 40;
-
+//Variáveis de programa
 float dt = 0;//Armazena o tempo de resposta do sensor de distância
 int PWM  = 0;//Armazena o PWM para os motores
-//Vetor dos sensores de borda
-float edgeSens1 = 0;
-float edgeSens2 = 0;
-float edgeSens3 = 0;
-float edgeSens4 = 0;
-float EDGE_SENSORS[4]{edgeSens1, edgeSens2, edgeSens3, edgeSens4};
-const float V_REF = 3.3;      // Tensão de referência do Raspberry Pi Pico
-const int ADC = 4095;         // Resolução ADC do Raspberry Pi Pico (12 bits)
-const float SENSITIVITY = 0.2481203008; // Sensibilidade do ACS712 (185mV/A para o modelo 5A)
-const float ZERO_POINT = V_REF / 2; // Ponto zero do sensor (meia escala)
-const float VOLTAGE_DIVIDER_RATIO = 5.0; // Razão do divisor de tensão (ex.: 100k/20k)
-const float LOAD_RESISTANCE = 10.0; // Variável para a resistência conhecida no circuito em ohms
+//sensores de borda
+volatile bool sensorEdgeTriggered = false; // Variável global para sinalizar que o sensor de borda foi acionado
 
 //INTERVALO PARA ESCRITA DE DADOS NO ARQUIVO NO CARTÃO SD
 unsigned long previousTime = 0; // Armazena o último ciclo do data logger
 const unsigned long interval = 100; // Ciclo de relógio do data logger (100 ms)
 bool botaoPressionado = false; // Variável para verificar se o botão de liga/desliga foi pressionado e segurado
 
-
 //-----------------------PROTÓTIPO DAS FUNÇÕES-------------------------------------
-float distancia(float tempo_us); //Calcula a distância a frente do HC_SR04
-void EDGE_SENSORS_MEASURE(); //Averigua os sensores da fronteira
-void verificaSensoresDianteiros();
-void verificaSensores();
+void H_BRIDGE_TEST();//Testa a ponte H
 void TRIGGER();
+float distancia(float tempo_us); //Calcula a distância a frente do HC_SR04
+void girarRobo(int potenciaMotor = 100);
+void analogSensors();//Função para tratamento dos sensores analógicos
 void ligaDesligaRobo();
-
+void EDGE_SENSORS_MEASURE(); //Averigua os sensores da fronteira
+void sensorEdgeISR();
+void playVictoryTheme();
+void setColor(int color);
 
 //-------------------PROTÓTIPO DAS FUNÇÕES DE DATA LOG-----------------------------
 void dataLogger(); // escreve os dados obtidos durante a execução do firmware em uma tabela no cartão SD
@@ -89,17 +169,14 @@ int getHighestFileNumber(); // obtem o maior número da sequência presente no n
 //-----------------------SETUP DO PRIMEIRO NÚCLEO----------------------------------
 void setup() {
   //Configura as entradas e saídas
-  for(uint8_t i = 0; i < 5; i++) pinMode(inputs[i], INPUT); //Inicializa as entradas
-  for(uint8_t k = 0; k < 14; k++) pinMode(outputs[k], OUTPUT); //Inicializa as saídas
-  for(uint8_t k = 0; k < 14; k++) digitalWrite(outputs[k], LOW); //Desativa todas as saídas
-  //Teste da iluminação dos LDRs
-  analogWrite(LIGHT_CTRL, 10);
-  delay(250);
-  analogWrite(LIGHT_CTRL, 80);
-  delay(250);
-  analogWrite(LIGHT_CTRL, 130);
-  delay(250);
-  analogWrite(LIGHT_CTRL, 255);
+  for(uint8_t i = 0; i < 6; i++) pinMode(inputs[i], INPUT); //Inicializa as entradas
+  for(uint8_t k = 0; k < 11; k++) pinMode(outputs[k], OUTPUT); //Inicializa as saídas
+  for(uint8_t k = 0; k < 11; k++) digitalWrite(outputs[k], LOW); //Desativa todas as saídas
+
+  // Anexa a interrupção para os sensores de borda
+  attachInterrupt(digitalPinToInterrupt(EDGE_SENS_1), sensorEdgeISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(EDGE_SENS_2), sensorEdgeISR, CHANGE);
+
   //TESTE DO BUZZER
   analogWriteFreq(2000); // Define a frequência para 2000 Hz (2 kHz)
   analogWrite(BUZZER, 128); // Ativa o buzzer com 50% do ciclo de trabalho
@@ -119,7 +196,7 @@ void setup() {
 }
 //-----------------------LOOP DO PRIMEIRO NÚCLEO-----------------------------------
 void loop() {
-  ligaDesligaRobo();
+
 
   if(botaoPressionado) procurarObjeto();
 }
@@ -139,7 +216,7 @@ void setup1(){
   myFile = SD.open(fileName, FILE_WRITE);
 
   if (myFile) {
-    myFile.println("Tempo(s),Voltagem(V),Corrente(A), Distância do objeto(cm), Sensor de borda 1, Sensor de borda 2, Sensor de borda 3, Sensor de borda 4 ");
+    myFile.println("Tempo(s),Voltagem(V),Corrente(A), Distância do objeto(cm)");
     Serial.print("Arquivo criado: ");
     Serial.println(fileName);
     myFile.close();
@@ -154,12 +231,41 @@ void setup1(){
 void loop1(){
   ligaDesligaRobo();
 
-  if(botaoPressionado) dataLogger();
-
+  if(botaoPressionado) {
+    analogSensors();
+    dataLogger();
+  }
 
 }
 
 //-----------------------DESENVOLVIMENTO DAS FUNÇÕES-------------------------------
+
+void analogSensors(){
+  float voltageRead = 0; // V. auxiliar para armazenar a leitura analógica do sensor de tensão
+  float voltageAvg = 0; // V. auxiliar para armazenar a média das leituras de tensão
+  float currentRead = 0; // V. auxiliar para armazenar a leitura analógica do sensor de corrente
+  float currentAvg = 0; // V. auxiliar para armazenar a média das leituras de corrente
+  if((millis() - updateAnalog) >= 100){ // Temporização
+    updateAnalog = millis(); // Reset da temporização
+    //MEDIA DAS LEITURAS
+    for (int k = 0; k < 10; k++){ // Somatório das amostras
+        voltageRead += analogRead(VOLTAGE_PIN);//Acumula as leituras do pino analógico de tensão
+        currentRead += analogRead(CURRENT_PIN);//Acumula as leituras do pino analógico de corrente
+        delayMicroseconds(100);//A cada 100us
+    }
+    //MEDIÇÃO DE TENSÃO
+    voltageAvg  = (voltageRead/10); // Obtendo a média das amostras de tensão
+    instVoltage = (((voltageAvg/1023.00)*3.3)/0.24); // Realizando a conversão AD segundo os requisitos de hardware
+    Serial.print("Tensão da bateria (V): ");
+    Serial.println(instVoltage);
+    //MEDIÇÃO DA CORRENTE DE CONSUMO DO CIRCUITO (ACS712)
+    currentAvg  = (currentRead/10); // Obtendo a média das amostras de corrente
+    instCurrent = ((((((currentAvg/1023.00)*3.3)-1.25)*100)/0.185)-2);
+    Serial.print("Corrente drenada(mA): ");
+    Serial.println(instCurrent);
+  }
+}
+
 //Pulso para o sensor HC_SR04
 void TRIGGER(){//Gera pulso de 10us no pino de trigger do HC_SR04
   digitalWrite(TRIG, HIGH);
@@ -167,13 +273,26 @@ void TRIGGER(){//Gera pulso de 10us no pino de trigger do HC_SR04
   digitalWrite(TRIG, LOW);
 }
 
+// Função ISR que será chamada quando ocorrer uma alteração em EDGE_SENS_1 ou EDGE_SENS_2
+void sensorEdgeISR() {
+  sensorEdgeTriggered = true;
+}
+
 void procurarObjeto(){
   bool objetoProximo = false; // Variável para verificar se encontrou objeto a menos de 25 cm
+  sensorEdgeTriggered = false;
 
   reiniciaLoop();
   girarRobo(); // Inicia o movimento de giro
 
-  for (uint8_t i = 0; i < 25; i++) {
+  for (uint8_t i = 0; i < 45; i++) {
+
+    verificaSensoresGiro();
+
+    if (sensorEdgeTriggered == true){
+      break;
+    }
+
     TRIGGER(); // Envia pulso para o sensor HC_SR04
     dt = pulseIn(ECHO, HIGH); // Mede o tempo de retorno do echo
     float distanciaCm = distancia(dt) * 100; // Calcula a distância em cm
@@ -181,17 +300,18 @@ void procurarObjeto(){
     Serial.println(distanciaCm);
 
     // Verifica se encontrou um objeto a menos de 25 cm
-    if (distanciaCm < 25.0) {
+    if (distanciaCm < 50.0) {
       Serial.println("achou o objeto");
+      delay(200);
       pararRobo(); // Para o robô
-      delay(1000); // Pequena pausa
+      delay(100); // Pequena pausa
       trocaEstadoAchou();
       andarParaFrente(); // Anda para frente
       objetoProximo = true; // Atualiza o estado para objeto encontrado
       verificaSensores();
-      //verificaSensoresDianteiros();
+      if(!botaoPressionado) break;
       andarParaTras();
-      delay(4000);
+      delay(2000);
       pararRobo();
       break; // Sai do loop for
     }
@@ -203,13 +323,12 @@ void procurarObjeto(){
     Serial.print("não achou o objeto");
     // Caso não encontre objeto a menos de 25 cm
     pararRobo(); // Para o robô
-    delay(1000); // Pausa
+    delay(100); // Pausa
     trocaEstadoNaoAchou();
-    andarParaTras(); // Anda para trás
+    andarParaFrente(); // Anda para trás
     verificaSensores();
-    //verificarSensoresTraseiros();
-    andarParaFrente();
-    delay(4000);
+    andarParaTras();
+    delay(2000);
     pararRobo();
   }
 
@@ -248,7 +367,7 @@ void andarParaTras() {
 }
 
 // Função que faz o robô girar dentro do próprio eixo
-void girarRobo() {
+void girarRobo(int potenciaMotor) {
   analogWriteFreq(100);
   // Coloca os motores para girar no sentido que move o robô para frente
   digitalWrite(IN1, HIGH); // Define o sentido do motor 1
@@ -256,8 +375,20 @@ void girarRobo() {
   digitalWrite(IN3, LOW); // Define o sentido do motor 2
   digitalWrite(IN4, HIGH);
   // Ajusta a velocidade dos motores (AJUSTAR O VALOR DEPOIS)
-  analogWrite(MOTOR1, 200); // Motor 1
-  analogWrite(MOTOR2, 1200); // Motor 2
+  analogWrite(MOTOR1, potenciaMotor); // Motor 1
+  analogWrite(MOTOR2, potenciaMotor); // Motor 2
+}
+
+void girarRoboInv() {
+  analogWriteFreq(100);
+  // Coloca os motores para girar no sentido que move o robô para frente
+  digitalWrite(IN1, LOW); // Define o sentido do motor 1
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH); // Define o sentido do motor 2
+  digitalWrite(IN4, LOW);
+  // Ajusta a velocidade dos motores (AJUSTAR O VALOR DEPOIS)
+  analogWrite(MOTOR1, 150); // Motor 1
+  analogWrite(MOTOR2, 150); // Motor 2
 }
 
 // Função que para o robô imediatamente
@@ -295,11 +426,38 @@ void reiniciaLoop() {
 }
 
 void verificaSensores(){
-   EDGE_SENSORS_MEASURE();
-  while (EDGE_SENSORS[0] > LIMIAR_SENSOR && EDGE_SENSORS[1] > LIMIAR_SENSOR && EDGE_SENSORS[2] > LIMIAR_SENSOR && EDGE_SENSORS[3] > LIMIAR_SENSOR) {
-        EDGE_SENSORS_MEASURE();
+  // Reinicia o flag para garantir que a interrupção seja detectada a partir deste ponto
+  sensorEdgeTriggered = false;
+
+  // Aguarda até que um dos sensores dispare a interrupção
+  while (!sensorEdgeTriggered) {
+
   }
+
+  pararRobo();
+
+  TRIGGER(); // Envia pulso para o sensor HC_SR04
+  dt = pulseIn(ECHO, HIGH); // Mede o tempo de retorno do echo
+  float distanciaCm = distancia(dt) * 100; // Calcula a distância em cm
+
+  if (distanciaCm < 7){
+    andarParaTras();
+    delay(1000);
+    girarRobo(250);
+    playVictoryTheme();
     pararRobo();
+    botaoPressionado = false;
+  }
+}
+
+
+void verificaSensoresGiro(){
+  if (sensorEdgeTriggered == true){
+    pararRobo();
+    delay(500);
+    girarRoboInv();
+    delay(2000);
+  }
 }
 
 void ligaDesligaRobo(){
@@ -340,7 +498,7 @@ void ligaDesligaRobo(){
 
       botaoPressionado = false; // desliga o robo
 
-      for(uint8_t k = 0; k < 14; k++) digitalWrite(outputs[k], LOW); // Desativa todas as saídas
+      for(uint8_t k = 0; k < 11; k++) digitalWrite(outputs[k], LOW); // Desativa todas as saídas
 
       Serial.println("Robô desligado.");
 
@@ -351,33 +509,6 @@ void ligaDesligaRobo(){
     // Aguarda o botão ser solto antes de continuar
     while (digitalRead(BOT) == LOW);
   }
-
-
-}
-
-//Obtenção dos sensores da borda
-void EDGE_SENSORS_MEASURE(){
-  //Obs: a organização do vetor está levando em conta a montagem em protoboard, isso não se reflete na disposição física dos sensores no robô.
-  //Sensor 1
-  digitalWrite(MUX_BIT0, LOW);
-  digitalWrite(MUX_BIT1, LOW);
-  delayMicroseconds(10);
-  EDGE_SENSORS[2] = analogRead(SENS_PIN);
-  //Sensor 2
-  digitalWrite(MUX_BIT0, HIGH);
-  digitalWrite(MUX_BIT1, LOW);
-  delayMicroseconds(10);
-  EDGE_SENSORS[1] = analogRead(SENS_PIN);
-  //Sensor 3
-  digitalWrite(MUX_BIT0, LOW);
-  digitalWrite(MUX_BIT1, HIGH);
-  delayMicroseconds(10);
-  EDGE_SENSORS[3] = analogRead(SENS_PIN);
-  //Sensor 4
-  digitalWrite(MUX_BIT0, HIGH);
-  digitalWrite(MUX_BIT1, HIGH);
-  delayMicroseconds(10);
-  EDGE_SENSORS[0] = analogRead(SENS_PIN);
 }
 
 void dataLogger() {
@@ -389,13 +520,6 @@ void dataLogger() {
     TRIGGER();
     dt = pulseIn(ECHO, HIGH); //Medição do retorno de echo
 
-    // --- Medição de Corrente ---
-    int rawCurrent = analogRead(CURRENT_PIN); // Leitura do sensor ACS712
-    int rawVoltage = analogRead(VOLTAGE_PIN); // Leitura do divisor de tensão
-    float voltageMeasured = (rawVoltage / (float)ADC) * V_REF; // Converte para tensão no ADC
-    float current = (voltageMeasured - ZERO_POINT) / SENSITIVITY; // Calcula corrente em amperes
-    float circuitVoltage = voltageMeasured * VOLTAGE_DIVIDER_RATIO; // Ajusta pela razão do divisor de tensão
-
     // Abrindo o arquivo para salvar os dados
     myFile = SD.open(fileName, FILE_WRITE);
 
@@ -403,26 +527,19 @@ void dataLogger() {
       // Escrevendo os dados no arquivo CSV
       myFile.print(time / 1000.0); // Converte tempo de milissegundos para segundos
       myFile.print(",");
-      myFile.print(circuitVoltage, 2); // 2 casas decimais para tensão
+      myFile.print(instVoltage, 2); // 2 casas decimais para tensão
       myFile.print(",");
-      myFile.print(current, 2); // 2 casas decimais para corrente
+      myFile.print(instCurrent, 2); // 2 casas decimais para corrente
       myFile.print(",");
       myFile.print(distancia(dt)*100);  // Distância medida pelo sensor de distância em cm
-      myFile.print(",");
-      myFile.print(EDGE_SENSORS[0]);
-      myFile.print(",");
-      myFile.print(EDGE_SENSORS[1]);
-      myFile.print(",");
-      myFile.print(EDGE_SENSORS[2]);
-      myFile.print(",");
-      myFile.println(EDGE_SENSORS[3]);
+      myFile.println(",");
       myFile.close(); // Fecha o arquivo
 
       // Exibe no monitor serial
-      printData(time, circuitVoltage, current);
+      printData(time, instVoltage, instCurrent);
     } else {
       // Se não conseguiu salvar, exibe erro no monitor serial
-      printData(time, circuitVoltage, current, true);
+      printData(time, instVoltage, instCurrent, true);
     }
   }
 }
@@ -474,4 +591,87 @@ int getHighestFileNumber() {
   }
 
   return highestNumber;
+}
+
+void playVictoryTheme() {
+  // Melodia ajustada da música de vitória
+  int melody[] = {
+    NOTE_F5, NOTE_F5, NOTE_D5, NOTE_F5, NOTE_C5, NOTE_F5, NOTE_D5, NOTE_C5, NOTE_F5, // Abertura
+    NOTE_C5, NOTE_C6, NOTE_D6, NOTE_C6, NOTE_D6, NOTE_C6, // Meio da música
+    NOTE_C5, NOTE_AS5, NOTE_A5, NOTE_G5, NOTE_F5, 0,  NOTE_F6 // Finalização
+  };
+
+  // Duração das notas: 2 = minima, 4 = semínima, 8 = colcheia, 16 = semicolcheia.
+  int noteDurations[] = {
+    4, 4, 7, 4, 7, 8, 7, 7, 2, 7,   // Abertura (pausa após o acorde inicial)
+    8, 7, 7, 7, 6, 16,  // Meio da melodia
+    16, 16, 8, 2, 4, 3  // Finalização
+  };
+  int ledColor[] = {
+    0, 1, 2, 3, 4, 5, 6, 0, 1, 2,   // Abertura
+    3, 4, 5, 6, 0, 1,               // Meio da melodia
+    2, 3, 4, 5, 6, 7                // Finalização
+  };
+
+  for (int i = 0; i < sizeof(noteDurations) / sizeof(noteDurations[0]); i++) {
+    int noteDuration = 1000 / noteDurations[i];
+
+    if (melody[i] != 0) {  // Verifica se não é uma pausa
+      tone(BUZZER, melody[i], noteDuration);
+    }
+
+    setColor(ledColor[i]); // Define a cor do LED
+
+    int pauseBetweenNotes = noteDuration * 1.3;
+    delay(pauseBetweenNotes);
+
+    noTone(BUZZER);  // Para o som após a nota
+
+    setColor(7); // Desliga o LED após a nota
+  }
+}
+
+void setColor(int color) {
+  switch (color) {
+    case 0: // Vermelho
+      analogWrite(RED, 255);
+      analogWrite(GREEN, 0);
+      analogWrite(BLUE, 0);
+      break;
+    case 1: // Verde
+      analogWrite(RED, 0);
+      analogWrite(GREEN, 255);
+      analogWrite(BLUE, 0);
+      break;
+    case 2: // Azul
+      analogWrite(RED, 0);
+      analogWrite(GREEN, 0);
+      analogWrite(BLUE, 255);
+      break;
+    case 3: // Amarelo (Vermelho + Verde)
+      analogWrite(RED, 255);
+      analogWrite(GREEN, 255);
+      analogWrite(BLUE, 0);
+      break;
+    case 4: // Roxo (Vermelho + Azul)
+      analogWrite(RED, 255);
+      analogWrite(GREEN, 0);
+      analogWrite(BLUE, 255);
+      break;
+    case 5: // Ciano (Verde + Azul)
+      analogWrite(RED, 0);
+      analogWrite(GREEN, 255);
+      analogWrite(BLUE, 255);
+      break;
+    case 6: // Branco (todas as cores)
+      analogWrite(RED, 255);
+      analogWrite(GREEN, 255);
+      analogWrite(BLUE, 255);
+      break;
+    case 7: // Desligado
+      analogWrite(RED, 0);
+      analogWrite(GREEN, 0);
+      analogWrite(BLUE, 0);
+      break;
+  }
 }
