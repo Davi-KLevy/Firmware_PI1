@@ -1,7 +1,7 @@
 /*
 FIRMWARE DE TESTES DO HARDWARE PROJETO ROBÔ SUMÔ - PI1
 
-AUTOR: PAULO CALEB FERNANDES DA SILVA
+AUTORES: PAULO CALEB FERNANDES DA SILVA, GABRIEL DA CUNHA BARBACELI,
 
 MICROCONTROLADOR UTILIZADO: RP2040 (Mbed as Raspberry pi pico)
 */
@@ -34,95 +34,15 @@ const uint8_t inputs  [6] { CURRENT_PIN, VOLTAGE_PIN, BOT, ECHO, EDGE_SENS_1, ED
 const uint8_t outputs [11] {TRIG, MOTOR1, IN1, IN2, IN3, IN4, MOTOR2, RED, GREEN, BLUE, BUZZER}; //Vetor de saídas
 
 //--------------------VARIÁVEIS DO PROGRAMA--------------------------------
-#define NOTE_B0  31
-#define NOTE_C1  33
-#define NOTE_CS1 35
-#define NOTE_D1  37
-#define NOTE_DS1 39
-#define NOTE_E1  41
-#define NOTE_F1  44
-#define NOTE_FS1 46
-#define NOTE_G1  49
-#define NOTE_GS1 52
-#define NOTE_A1  55
-#define NOTE_AS1 58
-#define NOTE_B1  62
-#define NOTE_C2  65
-#define NOTE_CS2 69
-#define NOTE_D2  73
-#define NOTE_DS2 78
-#define NOTE_E2  82
-#define NOTE_F2  87
-#define NOTE_FS2 93
-#define NOTE_G2  98
-#define NOTE_GS2 104
-#define NOTE_A2  110
-#define NOTE_AS2 117
-#define NOTE_B2  123
-#define NOTE_C3  131
-#define NOTE_CS3 139
-#define NOTE_D3  147
-#define NOTE_DS3 156
-#define NOTE_E3  165
-#define NOTE_F3  175
-#define NOTE_FS3 185
-#define NOTE_G3  196
-#define NOTE_GS3 208
-#define NOTE_A3  220
-#define NOTE_AS3 233
-#define NOTE_B3  247
-#define NOTE_C4  262
-#define NOTE_CS4 277
-#define NOTE_D4  294
-#define NOTE_DS4 311
-#define NOTE_E4  330
-#define NOTE_F4  349
-#define NOTE_FS4 370
-#define NOTE_G4  392
-#define NOTE_GS4 415
-#define NOTE_A4  440
-#define NOTE_AS4 466
-#define NOTE_B4  494
 #define NOTE_C5  523
-#define NOTE_CS5 554
 #define NOTE_D5  587
-#define NOTE_DS5 622
-#define NOTE_E5  659
 #define NOTE_F5  698
-#define NOTE_FS5 740
 #define NOTE_G5  784
-#define NOTE_GS5 831
 #define NOTE_A5  880
 #define NOTE_AS5 932
-#define NOTE_B5  988
 #define NOTE_C6  1047
-#define NOTE_CS6 1109
 #define NOTE_D6  1175
-#define NOTE_DS6 1245
-#define NOTE_E6  1319
 #define NOTE_F6  1397
-#define NOTE_FS6 1480
-#define NOTE_G6  1568
-#define NOTE_GS6 1661
-#define NOTE_A6  1760
-#define NOTE_AS6 1865
-#define NOTE_B6  1976
-#define NOTE_C7  2093
-#define NOTE_CS7 2217
-#define NOTE_D7  2349
-#define NOTE_DS7 2489
-#define NOTE_E7  2637
-#define NOTE_F7  2794
-#define NOTE_FS7 2960
-#define NOTE_G7  3136
-#define NOTE_GS7 3322
-#define NOTE_A7  3520
-#define NOTE_AS7 3729
-#define NOTE_B7  3951
-#define NOTE_C8  4186
-#define NOTE_CS8 4435
-#define NOTE_D8  4699
-#define NOTE_DS8 4978
 
 
 const float VelocidadeSom_mpors = 340, // em metros por segundo
@@ -162,7 +82,6 @@ void setColor(int color);
 
 //-------------------PROTÓTIPO DAS FUNÇÕES DE DATA LOG-----------------------------
 void dataLogger(); // escreve os dados obtidos durante a execução do firmware em uma tabela no cartão SD
-void printData(unsigned long time, float circuitVoltage, float current, bool error = false);
 String getNewNumber();  //obtem o próximo número da sequência para criar o arquivo de dataLogger
 int getHighestFileNumber(); // obtem o maior número da sequência presente no nome dos arquivos dentro do cartão SD
 
@@ -196,20 +115,13 @@ void setup() {
 }
 //-----------------------LOOP DO PRIMEIRO NÚCLEO-----------------------------------
 void loop() {
-
-
   if(botaoPressionado) procurarObjeto();
 }
 //-----------------------SETUP DO SEGUNDO NÚCLEO-----------------------------------
 void setup1(){
-  Serial.begin(9600); // Inicia a comunicação serial
 
   // Inicializa o cartão SD
-  if (!SD.begin(_CS)) {
-    Serial.println("Erro ao inicializar o cartão SD.");
-    while (1);
-  }
-  Serial.println("Cartão SD inicializado com sucesso!");
+  if (SD.begin(_CS)) {
 
   // Cria o novo arquivo para escrever as colunas
   fileName = getNewNumber();
@@ -217,12 +129,12 @@ void setup1(){
 
   if (myFile) {
     myFile.println("Tempo(s),Voltagem(V),Corrente(A), Distância do objeto(cm)");
-    Serial.print("Arquivo criado: ");
-    Serial.println(fileName);
     myFile.close();
-  } else {
-    Serial.println("Falha ao criar o arquivo.");
   }
+  }
+
+
+
 
 //FIm do setup do segundo núcleo
 }
@@ -256,13 +168,9 @@ void analogSensors(){
     //MEDIÇÃO DE TENSÃO
     voltageAvg  = (voltageRead/10); // Obtendo a média das amostras de tensão
     instVoltage = (((voltageAvg/1023.00)*3.3)/0.24); // Realizando a conversão AD segundo os requisitos de hardware
-    Serial.print("Tensão da bateria (V): ");
-    Serial.println(instVoltage);
     //MEDIÇÃO DA CORRENTE DE CONSUMO DO CIRCUITO (ACS712)
     currentAvg  = (currentRead/10); // Obtendo a média das amostras de corrente
     instCurrent = ((((((currentAvg/1023.00)*3.3)-1.25)*100)/0.185)-2);
-    Serial.print("Corrente drenada(mA): ");
-    Serial.println(instCurrent);
   }
 }
 
@@ -296,12 +204,9 @@ void procurarObjeto(){
     TRIGGER(); // Envia pulso para o sensor HC_SR04
     dt = pulseIn(ECHO, HIGH); // Mede o tempo de retorno do echo
     float distanciaCm = distancia(dt) * 100; // Calcula a distância em cm
-    Serial.print("Distancia em centimetros: ");
-    Serial.println(distanciaCm);
 
     // Verifica se encontrou um objeto a menos de 25 cm
     if (distanciaCm < 50.0) {
-      Serial.println("achou o objeto");
       delay(200);
       pararRobo(); // Para o robô
       delay(100); // Pequena pausa
@@ -320,7 +225,6 @@ void procurarObjeto(){
   }
 
   if (!objetoProximo) {
-    Serial.print("não achou o objeto");
     // Caso não encontre objeto a menos de 25 cm
     pararRobo(); // Para o robô
     delay(100); // Pausa
@@ -465,14 +369,10 @@ void ligaDesligaRobo(){
 
   if(digitalRead(BOT) == LOW){
    botaoPressionado = digitalRead(BOT) == HIGH ? false : true;
-   Serial.print("botâo: ");
-   Serial.println(digitalRead(BOT));
 
    delay(1000); // aguarda 1 segundo para verificar se o botão ainda está pressionado
 
    botaoPressionado = digitalRead(BOT) == HIGH ? false : true;
-   Serial.print("botâo: ");
-   Serial.println(digitalRead(BOT));
 
    if(botaoPressionado) {
     if(!estadoAnteriorBotao){
@@ -499,8 +399,6 @@ void ligaDesligaRobo(){
       botaoPressionado = false; // desliga o robo
 
       for(uint8_t k = 0; k < 11; k++) digitalWrite(outputs[k], LOW); // Desativa todas as saídas
-
-      Serial.println("Robô desligado.");
 
 
     }
@@ -534,30 +432,8 @@ void dataLogger() {
       myFile.print(distancia(dt)*100);  // Distância medida pelo sensor de distância em cm
       myFile.println(",");
       myFile.close(); // Fecha o arquivo
-
-      // Exibe no monitor serial
-      printData(time, instVoltage, instCurrent);
-    } else {
-      // Se não conseguiu salvar, exibe erro no monitor serial
-      printData(time, instVoltage, instCurrent, true);
     }
   }
-}
-
-void printData(unsigned long time, float circuitVoltage, float current, bool error) {
-  if (error) {
-    Serial.println("Falha ao abrir o arquivo.");
-    Serial.println("Dados não salvos:");
-  } else {
-    Serial.println("Dados salvos:");
-  }
-  Serial.print("Tempo: ");
-  Serial.print(time / 1000.0); // Exibe o tempo em segundos no monitor serial
-  Serial.print(" s, Tensão: ");
-  Serial.print(circuitVoltage, 2);
-  Serial.print(" V, Corrente: ");
-  Serial.print(current, 2);
-  Serial.println(" A");
 }
 
 String getNewNumber() {
